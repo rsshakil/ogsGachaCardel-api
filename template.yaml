@@ -1,0 +1,1111 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  ogsGacha-api
+
+Parameters:
+  Environment:
+    Type: String
+
+Globals:
+  Api:
+    Cors:
+      AllowMethods: "'*'"
+      AllowHeaders: "'*'"
+      AllowOrigin: "'*'"
+  Function:
+    Timeout: 30
+    Environment:
+      Variables:
+        REGION: ap-northeast-1
+        ENV: !Ref Environment
+
+Resources:
+  # Layer
+  LambdaLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub "Gacha-LambdaLayer-${Environment}"
+      Description: Dependencies for Admin LAMBDAs
+      ContentUri: layer/
+      CompatibleRuntimes:
+        - nodejs18.x
+      LicenseInfo: "MIT"
+      RetentionPolicy: Retain
+    Metadata:
+      BuildMethod: nodejs18.x
+
+  # API Gateway
+  OGSGachaApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "OGSGachaAPI-${Environment}"
+      Description: API GateWay REST API for OGS Gacha APIs
+      GatewayResponses:
+        DEFAULT_4XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Headers: "'*'"
+              Access-Control-Allow-Origin: "'*'"
+        DEFAULT_5XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Headers: "'*'"
+              Access-Control-Allow-Origin: "'*'"
+      StageName: !Ref Environment
+      # Auth:
+      #    AddDefaultAuthorizerToCorsPreflight: false
+      #    DefaultAuthorizer: RoleAuthorizer
+      #    Authorizers:
+      #     RoleAuthorizer:
+      #       FunctionArn: !GetAtt AuthorizerFunction.Arn
+      #       FunctionPayloadType: 'TOKEN'
+      #       Identity:
+      #         Headers:
+      #           - Authorization
+      #         ReauthorizeEvery: 0
+
+  # ガチャ情報取得
+  GachaProductRead:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaProductRead-${Environment}"
+      CodeUri: lambdas/GachaProductRead
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 1024
+      Timeout: 5
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /product
+            Method: get
+            RestApiId: !Ref OGSGachaApi
+        ApiDetailEvent:
+          Type: Api
+          Properties:
+            Path: /product/{gachaId+}
+            Method: get
+            RestApiId: !Ref OGSGachaApi
+  # ガチャ実行
+  GachaProductExecute:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaProductExecute-${Environment}"
+      CodeUri: lambdas/GachaProductExecute
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 1024
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventExecute:
+          Type: Api
+          Properties:
+            Path: /product/{gachaId+}
+            Method: post
+            RestApiId: !Ref OGSGachaApi
+
+  # Gacha Product History
+  GachaProductHistoryRead:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaProductHistoryRead-${Environment}"
+      CodeUri: lambdas/GachaProductHistoryRead
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiDetailEvent:
+          Type: Api
+          Properties:
+            Path: /product/history/{gachaId+}
+            Method: get
+            RestApiId: !Ref OGSGachaApi
+
+  # ユーザー情報取得
+  GachaUserRead:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaUserRead-${Environment}"
+      CodeUri: lambdas/GachaUserRead
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 1024
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventDetail:
+          Type: Api
+          Properties:
+            Path: /user
+            Method: get
+            RestApiId: !Ref OGSGachaApi
+  # ユーザー新規作成
+  GachaUserCreate:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaUserCreate-${Environment}"
+      CodeUri: lambdas/GachaUserCreate
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 1024
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventCreate:
+          Type: Api
+          Properties:
+            Path: /user
+            Method: post
+            RestApiId: !Ref OGSGachaApi
+  # ユーザー情報更新
+  GachaUserUpdate:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaUserUpdate-${Environment}"
+      CodeUri: lambdas/GachaUserUpdate
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventUpdate:
+          Type: Api
+          Properties:
+            Path: /user
+            Method: put
+            RestApiId: !Ref OGSGachaApi
+  # ユーザー国情報更新
+  GachaUserCountryUpdate:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaUserCountryUpdate-${Environment}"
+      CodeUri: lambdas/GachaUserCountryUpdate
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventUpdate:
+          Type: Api
+          Properties:
+            Path: /user/country
+            Method: put
+            RestApiId: !Ref OGSGachaApi
+  # ユーザー言語を更新する
+  GachaUserLanguageUpdate:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaUserLanguageUpdate-${Environment}"
+      CodeUri: lambdas/GachaUserLanguageUpdate
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventUpdate:
+          Type: Api
+          Properties:
+            Path: /user/language
+            Method: put
+            RestApiId: !Ref OGSGachaApi
+  # ユーザー国情報取得
+  GachaUserCountryRead:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaUserCountryRead-${Environment}"
+      CodeUri: lambdas/GachaUserCountryRead
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventUpdate:
+          Type: Api
+          Properties:
+            Path: /user/country
+            Method: get
+            RestApiId: !Ref OGSGachaApi
+  # ユーザーポイント還元処理/発送申し込み処理
+  GachaUserCollectionUpdate:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaUserCollectionUpdate-${Environment}"
+      CodeUri: lambdas/GachaUserCollectionUpdate
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 1024
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventCreate:
+          Type: Api
+          Properties:
+            Path: /user/collection
+            Method: post
+            RestApiId: !Ref OGSGachaApi
+  # ポイント付与処理
+  GachaUserPointExecute:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaUserPointExecute-${Environment}"
+      CodeUri: lambdas/GachaUserPointExecute
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventExecute:
+          Type: Api
+          Properties:
+            Path: /user/point
+            Method: post
+            RestApiId: !Ref OGSGachaApi
+  # クーポン読み込み
+  GachaUserCouponExecute:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaUserCouponExecute-${Environment}"
+      CodeUri: lambdas/GachaUserCouponExecute
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventExecute:
+          Type: Api
+          Properties:
+            Path: /user/coupon
+            Method: post
+            RestApiId: !Ref OGSGachaApi
+  # ユーザープレゼントリスト
+  GachaUserPresentRead:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaUserPresentRead-${Environment}"
+      CodeUri: lambdas/GachaUserPresentRead
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventUpdate:
+          Type: Api
+          Properties:
+            Path: /user/present
+            Method: get
+            RestApiId: !Ref OGSGachaApi
+  GachaPointRead:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaPointRead-${Environment}"
+      CodeUri: lambdas/GachaPointRead
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventDetail:
+          Type: Api
+          Properties:
+            Path: /point
+            Method: get
+            RestApiId: !Ref OGSGachaApi
+  # プレゼント受け取り
+  GachaUserPresentExecute:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaUserPresentExecute-${Environment}"
+      CodeUri: lambdas/GachaUserPresentExecute
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventExecute:
+          Type: Api
+          Properties:
+            Path: /user/present
+            Method: post
+            RestApiId: !Ref OGSGachaApi
+
+  # パスワード忘れ処理
+  GachaForgetPasswordExecute:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaForgetPasswordExecute-${Environment}"
+      CodeUri: lambdas/GachaForgetPasswordExecute
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventCreate:
+          Type: Api
+          Properties:
+            Path: /user/forget/password
+            Method: post
+            RestApiId: !Ref OGSGachaApi
+
+  # メールアドレス認証
+  GachaMailVerification:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaMailVerification-${Environment}"
+      CodeUri: lambdas/GachaMailVerification
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventCreate:
+          Type: Api
+          Properties:
+            Path: /user/mail/verification
+            Method: post
+            RestApiId: !Ref OGSGachaApi
+  # お届け先新規作成
+  GachaUserShippingCreate:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaUserShippingCreate-${Environment}"
+      CodeUri: lambdas/GachaUserShippingCreate
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventCreate:
+          Type: Api
+          Properties:
+            Path: /user/shipping
+            Method: post
+            RestApiId: !Ref OGSGachaApi
+  # お届け先情報更新
+  GachaUserShippingUpdate:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaUserShippingUpdate-${Environment}"
+      CodeUri: lambdas/GachaUserShippingUpdate
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventUpdate:
+          Type: Api
+          Properties:
+            Path: /user/shipping/{userShippingId+}
+            Method: put
+            RestApiId: !Ref OGSGachaApi
+  # お届け先情報削除
+  GachaUserShippingDelete:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaUserShippingDelete-${Environment}"
+      CodeUri: lambdas/GachaUserShippingDelete
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventUpdate:
+          Type: Api
+          Properties:
+            Path: /user/shipping/{userShippingId+}
+            Method: delete
+            RestApiId: !Ref OGSGachaApi
+  # ユーザーパスワードが更新されました
+  GachaUserPasswordUpdate:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaUserPasswordUpdate-${Environment}"
+      CodeUri: lambdas/GachaUserPasswordUpdate
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventUpdate:
+          Type: Api
+          Properties:
+            Path: /user/password
+            Method: put
+            RestApiId: !Ref OGSGachaApi
+  # ユーザーメールアドレス変更
+  GachaUserMailUpdate:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaUserMailUpdate-${Environment}"
+      CodeUri: lambdas/GachaUserMailUpdate
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventUpdate:
+          Type: Api
+          Properties:
+            Path: /user/mail/
+            Method: put
+            RestApiId: !Ref OGSGachaApi
+  # ユーザーメールアドレス変更認証
+  GachaChangeMailVerification:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaChangeMailVerification-${Environment}"
+      CodeUri: lambdas/GachaChangeMailVerification
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventCreate:
+          Type: Api
+          Properties:
+            Path: /user/change/mail/verification
+            Method: post
+            RestApiId: !Ref OGSGachaApi
+  # ユーザーがパスワードを忘れた
+  GachaUserPasswordForget:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaUserPasswordForget-${Environment}"
+      CodeUri: lambdas/GachaUserPasswordForget
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventCreate:
+          Type: Api
+          Properties:
+            Path: /user/password/forget
+            Method: post
+            RestApiId: !Ref OGSGachaApi
+  # ユパスワード忘れの検証
+  GachaPasswordForgetVerification:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaPasswordForgetVerification-${Environment}"
+      CodeUri: lambdas/GachaPasswordForgetVerification
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventCreate:
+          Type: Api
+          Properties:
+            Path: /user/password/forget/verification
+            Method: post
+            RestApiId: !Ref OGSGachaApi
+  # ユーザーSMS
+  GachaUserSMS:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaUserSMS-${Environment}"
+      CodeUri: lambdas/GachaUserSMS
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventCreate:
+          Type: Api
+          Properties:
+            Path: /user/sms
+            Method: put
+            RestApiId: !Ref OGSGachaApi
+  # ユーザーSMS認証
+  GachaUserSMSAuth:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaUserSMSAuth-${Environment}"
+      CodeUri: lambdas/GachaUserSMSAuth
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventCreate:
+          Type: Api
+          Properties:
+            Path: /user/sms/auth
+            Method: put
+            RestApiId: !Ref OGSGachaApi
+  GachaUserShippingSMS:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaUserShippingSMS-${Environment}"
+      CodeUri: lambdas/GachaUserShippingSMS
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventCreate:
+          Type: Api
+          Properties:
+            Path: /user/shipping/sms
+            Method: post
+            RestApiId: !Ref OGSGachaApi
+  GachaUserPaymentSMS:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaUserPaymentSMS-${Environment}"
+      CodeUri: lambdas/GachaUserPaymentSMS
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventCreate:
+          Type: Api
+          Properties:
+            Path: /user/payment/sms
+            Method: post
+            RestApiId: !Ref OGSGachaApi
+  GachaUserPaymentSMSAuth:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaUserPaymentSMSAuth-${Environment}"
+      CodeUri: lambdas/GachaUserPaymentSMSAuth
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventCreate:
+          Type: Api
+          Properties:
+            Path: /user/payment/sms/auth
+            Method: post
+            RestApiId: !Ref OGSGachaApi
+
+  GachaUserPaymentBank:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaUserPaymentBank-${Environment}"
+      CodeUri: lambdas/GachaUserPaymentBank
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventCreate:
+          Type: Api
+          Properties:
+            Path: /user/payment/bank
+            Method: post
+            RestApiId: !Ref OGSGachaApi
+
+  GachaCreatePaymentHistory:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaCreatePaymentHistory-${Environment}"
+      CodeUri: lambdas/GachaCreatePaymentHistory
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 30
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventCreate:
+          Type: Api
+          Properties:
+            Path: /create-payment-history
+            Method: post
+            RestApiId: !Ref OGSGachaApi
+
+  GachaCreatePaymentCredit:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaCreatePaymentCredit-${Environment}"
+      CodeUri: lambdas/GachaCreatePaymentCredit
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 30
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventCreate:
+          Type: Api
+          Properties:
+            Path: /create-payment-credit
+            Method: post
+            RestApiId: !Ref OGSGachaApi
+
+  GachaCreatePaymentPaypay:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaCreatePaymentPaypay-${Environment}"
+      CodeUri: lambdas/GachaCreatePaymentPaypay
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 30
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiEventCreate:
+          Type: Api
+          Properties:
+            Path: /create-payment-paypay
+            Method: post
+            RestApiId: !Ref OGSGachaApi
+
+  GachaPollPayment:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "GachaPollPayment-${Environment}"
+      CodeUri: lambdas/GachaPollPayment
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 30
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
+      Events:
+        ApiDetailEvent:
+          Type: Api
+          Properties:
+            Path: /poll/payments/{paymentHistoryId+}
+            Method: get
+            RestApiId: !Ref OGSGachaApi
+
+  #Notify by mail when a epsilon purchase is completed
+  EpsilonPurchaseNotifyMail:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "EpsilonPurchaseNotifyMail-${Environment}"
+      CodeUri: lambdas/EpsilonPurchaseNotifyMail
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 30
+      Role: "arn:aws:iam::225702177590:role/lambdaRole"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0885abeb220f0e4ab
+        SubnetIds:
+          - subnet-0c83c8d5d05ba69d5
+          - subnet-07154fc0f11ff6069
+          - subnet-0e2a18cc4a80eea8f
+      Layers:
+        - !Ref LambdaLayer
